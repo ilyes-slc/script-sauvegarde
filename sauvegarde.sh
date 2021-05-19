@@ -1,12 +1,44 @@
 #!/bin/bash
 
 
-
+#	ERRORS
 SUCCESS=100
 E_ARCHIVE_NOT_FOUND=101		#FILE ARCHIVE.TAR.GZ NOT FOUND 
 E_ARCHIVES_FOUND=102		#MANY FILES.TAR.GZ FOUND
 E_BAD_ARGUMENTS=103			#BAD NUMBER OF ARGUMENTS
 
+#	COLORS
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+
+#fonction qui prend en parametre le valeur de retour d'un fonction (qui la precede) et affiche un message
+gestion_erreur(){
+	case $1 in
+		$SUCCESS )
+	echo
+	echo -e "${BLUE}[*] opertaion terminated ..${NC}"
+	echo
+		;;
+		$E_BAD_ARGUMENTS)
+	echo
+	echo -e "${RED}[!] failed : bad number of arguments ..${NC}"
+	echo	
+		;;
+		$E_ARCHIVES_FOUND)
+	echo
+	echo -e "${RED}[!] failed : multiple archives found ..${NC}"
+	echo	
+		;;
+		$E_ARCHIVE_NOT_FOUND)
+	echo
+	echo -e "${RED}[!] failed : no archive found ..${NC}"
+	echo	
+		;;
+
+	esac
+}
 
 
 
@@ -17,9 +49,7 @@ echo "sauvegarde.sh: [-h] [-g] [-m] [-v] [-n] [-r] [-a] [-s] chemin.."
 }
 export -f show_usage
 #appel de fonction pour la tester
-show_usage;
-echo --------------------
-echo
+
 
 
 
@@ -36,9 +66,8 @@ HELP(){
 #appel de fonction pour la tester
 #
 export -f HELP
-HELP 1
-echo --------------------
-echo
+#HELP 1
+
 
 
 
@@ -73,13 +102,11 @@ nbr_taille(){
 		yad --height=150 --width=500 --center --text="<span foreground='yellow'><b><big>fichiers modifiés dans les 24 dernières <big>heures</big></big></b></span>" \
 --form --field=nombre:RO "$nbr" --field=taille:RO "$taille"
 	fi
-	
+	return $SUCCESS
 
 }
 export -f nbr_taille
-nbr_taille 1 
-echo --------------------
-echo
+#nbr_taille 1 
 
 
 #		fonction qui permet d’archiver dans une « archive tar » (fichier *.tar.gz) tous les
@@ -90,8 +117,9 @@ archiver(){
 
 	tar czvf archive.tar.gz --newer-mtime '1 days ago' /home/* &> /dev/null
 
-	echo terminated ...
+	echo terminated ...	
 	echo fichiers de votre répertoire personnel qui ont été modifiés dans les dernières 24 heures sont archvées dans archive.tar.gz
+	return $SUCCESS
 }
 export -f  archiver
 #fonction qui permet de renommer l’archive avec la date et l’heure de la modification.
@@ -124,12 +152,13 @@ sauvegarder_infos(){
 			return $E_ARCHIVES_FOUND
 		else
 			tar -tvf *.tar.gz > $name_file
+			return $SUCCESS
 		fi
 	fi
 }
 export -f sauvegarder_infos
 
-#while IFS= read -r line; do ls -la $line >> tmp2; done < tmp
+#fonction show usage en menu graphique
 yad_show_usage(){
 	(
 	yad --center --width=750 --image="gtk-dialog-info" --title="usage" --text="usage: sauvegarde.sh: [-h] [-g] [-m] [-v] [-n] [-r] [-a] [-s] chemin.."
@@ -148,7 +177,7 @@ version(){
 	fi
 }
 export -f version
-version arg
+#version arg
 
 cmdmain=(
    yad
@@ -169,6 +198,8 @@ cmdmain=(
       --field="HELP":btn "bash -c HELP"
 
 )
+
+
 interface_graphique(){
 	while true; do
 	    "${cmdmain[@]}"
@@ -178,4 +209,165 @@ interface_graphique(){
 	    esac
 	done
 }
-interface_graphique;
+#interface_graphique;
+
+menu(){
+	
+echo -e " ███████ ██     ██ ██   ██    ██ ███████ ███████ "
+echo -e " ██      ██     ██ ██    ██  ██  ██      ██      "
+echo -e " ███████ ██     ██ ██     ████   █████   ███████ "
+echo -e "      ██ ██     ██ ██      ██    ██           ██ "
+echo -e " ███████ ██     ██ ███████ ██    ███████ ███████ "
+echo -e "                                                 "
+echo -e ""
+
+	echo "1-	Pour afficher le help détaillé à partir d’un fichier texte"
+	echo "2-	Interface graphque (YAD)"
+	echo "3-	Afficher le nom des auteurs et version du code."
+	echo "4-	afficher le nombre de fichier et la taille totale occupée des fichiers modifiés dans les dernières 24heures."
+	echo "5-	archiver home(dernières 24 heures"
+	echo "6-	renommer l’archive avec la date et l’heure de la modification."
+	echo "7-	sauvegarder les informations sur les fichier archivés."
+	echo "9-	QUIT"
+}
+
+#		tester la présence d’au moins un argument, sinon il affiche l’usage sur la
+#++		sortie d’erreur et échoue.
+if [[ $# -eq "0" ]]; then
+	show_usage
+	exit
+fi
+
+while getopts "nars:mgvh" option
+do
+echo "getopts a trouvé l'option $option"
+case $option in
+	h)
+		clear
+		HELP textuel
+		#menu
+	;;
+
+	g)
+		clear
+		interface_graphique
+	;;
+
+	v)	
+		clear
+		version textuel
+		#menu
+	;;
+
+	n)	
+		clear
+		nbr_taille textuel
+		gestion_erreur $?
+		#menu
+	;;
+
+	a)
+		clear
+		archiver
+		gestion_erreur $?
+		#menu
+	;;
+
+	s)
+		clear
+		sauvegarder_infos $OPTARG
+		gestion_erreur $?
+
+	;;
+
+	r)
+		clear
+		renommer_archive
+		gestion_erreur $?
+		#menu
+	;;
+
+
+
+	m)
+		clear
+		menu
+
+		while (true)
+	do
+
+		echo "Votre choix : "
+	read choice
+	case $choice in
+
+			1)
+	clear
+	HELP textuel
+	menu
+			;;
+
+			2)
+	clear
+	interface_graphique
+	menu
+			;;
+
+			3)
+	clear
+	version textuel
+	menu
+			;;
+
+            4)
+	clear
+	nbr_taille textuel
+	gestion_erreur $?
+	menu
+			;;
+
+			5)
+	clear
+	archiver
+	gestion_erreur $?
+	menu
+			;;
+
+			6)
+	clear
+	renommer_archive
+	gestion_erreur $?	
+	menu
+			;;
+
+			7)
+	clear
+	echo "donner le nom de fichier a dans lequel on va enregistrer les infos"
+	read nom
+	sauvegarder_infos $nom
+	gestion_erreur $?	
+	menu
+			;;
+
+
+			9)
+	clear
+	echo "Au revoir si $USER"
+			exit
+			;;
+
+
+			*)
+	clear
+	echo "mauvais choix"		 			
+	menu
+			;;
+	
+	esac
+
+	done
+	;;
+
+esac
+done
+echo "Analyse des options terminée"
+exit 0
